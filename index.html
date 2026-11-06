@@ -13,6 +13,47 @@
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <!-- Firebase SDK (Modular CDN) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCrYwbTAAOSwnCuPNn7uXbWjhDcU8UGDEI",
+            authDomain: "mana-worship.firebaseapp.com",
+            databaseURL: "https://mana-worship-default-rtdb.firebaseio.com",
+            projectId: "mana-worship",
+            storageBucket: "mana-worship.firebasestorage.app",
+            messagingSenderId: "776854746970",
+            appId: "1:776854746970:web:8d098798d11b0df6ac6563"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // Exponer funciones de Firebase globalmente para la aplicación
+        window.fbDb = db;
+        window.fbRef = ref;
+        window.fbSet = set;
+        window.fbOnValue = onValue;
+
+        // Iniciar escucha en tiempo real de la base de datos
+        const dataRef = ref(db, 'mana_worship_plan_v2');
+        onValue(dataRef, (snapshot) => {
+            const serverData = snapshot.val();
+            if (serverData) {
+                window.currentWorshipData = serverData;
+                if (typeof window.populateMemberDropdown === 'function') {
+                    window.populateMemberDropdown();
+                    window.renderMainView();
+                }
+            } else {
+                // Si la base de datos está vacía, subir los datos iniciales
+                set(dataRef, window.initialData);
+            }
+        });
+    </script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -46,7 +87,6 @@
             background-attachment: fixed;
         }
 
-        /* Glassmorphism custom styling */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -201,17 +241,17 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
         <!-- Modal de Autenticación Admin -->
         <div id="authModal" class="modal-overlay hidden">
-        <div class="modal-content" style="max-width: 360px; text-align: center;">
-            <h3>Admin Acess</h3>
-            <p style="font-size: 0.85rem; color: var(--text-sub); margin-bottom: 1rem;">
-            Enter your pass:
-            </p>
-            <input type="password" id="adminPasswordInput" placeholder="Password" style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.3); color: #fff; margin-bottom: 1rem;">
-            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
-            <button onclick="closeAuthModal()" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-sub); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Cancel</button>
-            <button onclick="submitAuth()" class="btn btn-primary">Enter</button>
+            <div class="modal-content" style="max-width: 360px; text-align: center;">
+                <h3>Admin Access</h3>
+                <p style="font-size: 0.85rem; color: #a1a1aa; margin-bottom: 1rem;">
+                Enter your pass:
+                </p>
+                <input type="password" id="adminPasswordInput" placeholder="Password" style="width: 100%; padding: 0.75rem; border-radius: 8px; border: 1px solid #232840; background: rgba(0,0,0,0.3); color: #fff; margin-bottom: 1rem;">
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <button onclick="closeAuthModal()" style="background: transparent; border: 1px solid #232840; color: #a1a1aa; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">Cancel</button>
+                    <button onclick="submitAuth()" class="btn btn-primary">Enter</button>
+                </div>
             </div>
-        </div>
         </div>
                 
         <!-- Banner Summary / Song of the Month -->
@@ -272,7 +312,7 @@
                     </div>
                     <div>
                         <h3 class="text-lg font-bold text-white">Panel Administrador — Diseñador de Plan Mensual</h3>
-                        <p class="text-xs text-gray-400">Arma múltiples semanas de culto desde cero</p>
+                        <p class="text-xs text-gray-400">Arma múltiples semanas de culto en la nube</p>
                     </div>
                 </div>
                 <button onclick="closeAdminModal()" class="text-gray-400 hover:text-white text-xl px-2">
@@ -336,13 +376,12 @@
         </div>
     </div>
 
-    <!-- INITIAL DATA & APPLICATION LOGIC -->
+    <!-- APPLICATION LOGIC -->
     <script>
-        // Password for admin authorization
         const ADMIN_PASS = "admin2026";
 
-        // Pre-loaded initial plans matching original PDF dataset
-        let initialData = {
+        // Dataset inicial de respaldo
+        const initialData = {
             monthTitle: "Noviembre 2026",
             cdmTitle: "UN ENCUENTRO CONTIGO",
             cdmArtist: "Oasis Ministry",
@@ -524,6 +563,11 @@
             ]
         };
 
+        window.initialData = initialData;
+        window.currentWorshipData = JSON.parse(JSON.stringify(initialData));
+        let currentFilterMember = "";
+        let tempEditingPlans = [];
+
         const INSTRUMENT_OPTIONS = [
             { name: "Drums", icon: "🥁" },
             { name: "Piano", icon: "🎹" },
@@ -536,27 +580,14 @@
             { name: "Synth / Keyboards", icon: "🎹" }
         ];
 
-        // State variables
-        let currentWorshipData = loadWorshipData();
-        let currentFilterMember = "";
-        let tempEditingPlans = [];
-
-        function loadWorshipData() {
-            try {
-                const stored = localStorage.getItem('mana_worship_data_v2');
-                if (stored) return JSON.parse(stored);
-            } catch (e) {
-                console.error("Error reading localStorage", e);
-            }
-            return JSON.parse(JSON.stringify(initialData));
-        }
-
+        // Guardar datos directamente en Firebase Realtime Database
         function saveWorshipData(data) {
-            currentWorshipData = data;
-            try {
-                localStorage.setItem('mana_worship_data_v2', JSON.stringify(data));
-            } catch (e) {
-                console.error("Error saving localStorage", e);
+            window.currentWorshipData = data;
+            if (window.fbDb && window.fbRef && window.fbSet) {
+                const dataRef = window.fbRef(window.fbDb, 'mana_worship_plan_v2');
+                window.fbSet(dataRef, data).catch((error) => {
+                    console.error("Error al guardar en Firebase:", error);
+                });
             }
         }
 
@@ -570,10 +601,9 @@
             return normalizeStr(text).includes(normalizeStr(member));
         }
 
-        // Collect all unique members for filtering
         function getAllUniqueMembers() {
             const membersSet = new Set();
-            currentWorshipData.plans.forEach(plan => {
+            window.currentWorshipData.plans.forEach(plan => {
                 plan.vocals.forEach(v => {
                     if (v.singer) v.singer.split(/ y | & |,/i).forEach(n => n.trim() && membersSet.add(n.trim()));
                 });
@@ -596,8 +626,9 @@
             return Array.from(membersSet).sort();
         }
 
-        function populateMemberDropdown() {
+        window.populateMemberDropdown = function() {
             const select = document.getElementById('memberFilter');
+            if (!select) return;
             const members = getAllUniqueMembers();
             select.innerHTML = '<option value="">🔍 Ver Mi Agenda...</option>';
             members.forEach(m => {
@@ -606,22 +637,24 @@
                 opt.textContent = m;
                 select.appendChild(opt);
             });
-            document.getElementById('totalMembersCount').textContent = `${members.length} Persona(s)`;
+            const totalMembersEl = document.getElementById('totalMembersCount');
+            if (totalMembersEl) totalMembersEl.textContent = `${members.length} Persona(s)`;
         }
 
-        // Render main view
-        function renderMainView() {
-            document.getElementById('monthSubHeader').textContent = `Planificador de Servicios • ${currentWorshipData.monthTitle}`;
-            document.getElementById('cdmDisplayTitle').textContent = currentWorshipData.cdmTitle;
-            document.getElementById('cdmDisplayArtist').textContent = currentWorshipData.cdmArtist;
+        window.renderMainView = function() {
+            const data = window.currentWorshipData;
+            document.getElementById('monthSubHeader').textContent = `Planificador de Servicios • ${data.monthTitle}`;
+            document.getElementById('cdmDisplayTitle').textContent = data.cdmTitle;
+            document.getElementById('cdmDisplayArtist').textContent = data.cdmArtist;
 
             const container = document.getElementById('plansGrid');
+            if (!container) return;
             container.innerHTML = '';
 
             let matchedCardsCount = 0;
             let totalRolesForFilter = 0;
 
-            currentWorshipData.plans.forEach((plan) => {
+            data.plans.forEach((plan) => {
                 const isFiltering = currentFilterMember !== "";
                 let hasMemberInPlan = false;
 
@@ -690,7 +723,6 @@
 
                 card.innerHTML = `
                     <div>
-                        <!-- Header Week title -->
                         <div class="pb-4 border-b border-cardBorder mb-4">
                             <div class="text-xs font-bold text-accentPurple tracking-widest uppercase mb-1">
                                 ${plan.subtitle || 'SERVICIO'}
@@ -700,7 +732,6 @@
                             </h3>
                         </div>
 
-                        <!-- Vocals Table -->
                         <div class="mb-5">
                             <div class="flex items-center justify-between text-xs uppercase font-bold text-gray-400 tracking-wider mb-2 border-b border-cardBorder pb-1">
                                 <span>VOCAL</span>
@@ -760,59 +791,70 @@
                 container.appendChild(card);
             });
 
-            document.getElementById('totalServicesCount').textContent = `${currentWorshipData.plans.length} Servicios`;
+            document.getElementById('totalServicesCount').textContent = `${data.plans.length} Servicios`;
 
             const filterBanner = document.getElementById('filterBanner');
             if (currentFilterMember !== "") {
                 filterBanner.classList.remove('hidden');
                 document.getElementById('filterMemberName').textContent = currentFilterMember;
-                document.getElementById('filterStats').textContent = `Participa en ${matchedCardsCount} de ${currentWorshipData.plans.length} servicios con ${totalRolesForFilter} asignación(es).`;
+                document.getElementById('filterStats').textContent = `Participa en ${matchedCardsCount} de ${data.plans.length} servicios con ${totalRolesForFilter} asignación(es).`;
             } else {
                 filterBanner.classList.add('hidden');
             }
         }
 
-        // Filter Functionality
-        function filterByMember() {
+        window.filterByMember = function() {
             currentFilterMember = document.getElementById('memberFilter').value;
             const clearBtn = document.getElementById('clearBtn');
             if (currentFilterMember) clearBtn.classList.remove('hidden');
             else clearBtn.classList.add('hidden');
-            renderMainView();
+            window.renderMainView();
         }
 
-        function clearFilter() {
+        window.clearFilter = function() {
             document.getElementById('memberFilter').value = "";
             currentFilterMember = "";
             document.getElementById('clearBtn').classList.add('hidden');
-            renderMainView();
+            window.renderMainView();
         }
 
-        // ADMIN MODAL & BUILDER LOGIC
-        function promptAdminAccess() {
-            const pass = prompt("Ingrese la clave de Administrador (Admin Pass):");
+        window.openAuthModal = function() {
+            document.getElementById('adminPasswordInput').value = '';
+            document.getElementById('authModal').classList.remove('hidden');
+            setTimeout(() => {
+                document.getElementById('adminPasswordInput').focus();
+            }, 50);
+        }
+
+        window.closeAuthModal = function() {
+            document.getElementById('authModal').classList.add('hidden');
+        }
+
+        window.submitAuth = function() {
+            const pass = document.getElementById('adminPasswordInput').value;
             if (pass === ADMIN_PASS) {
-                openAdminModal();
-            } else if (pass !== null) {
-                alert("Clave incorrecta. Acceso denegado.");
+                window.closeAuthModal();
+                window.openAdminModal();
+            } else {
+                alert('Clave incorrecta');
             }
         }
 
-        function openAdminModal() {
-            tempEditingPlans = JSON.parse(JSON.stringify(currentWorshipData.plans));
-            document.getElementById('monthInput').value = currentWorshipData.monthTitle;
-            document.getElementById('cdmTitleInput').value = currentWorshipData.cdmTitle;
-            document.getElementById('cdmArtistInput').value = currentWorshipData.cdmArtist;
+        window.openAdminModal = function() {
+            tempEditingPlans = JSON.parse(JSON.stringify(window.currentWorshipData.plans));
+            document.getElementById('monthInput').value = window.currentWorshipData.monthTitle;
+            document.getElementById('cdmTitleInput').value = window.currentWorshipData.cdmTitle;
+            document.getElementById('cdmArtistInput').value = window.currentWorshipData.cdmArtist;
 
             renderWeeksBuilder();
             document.getElementById('adminModal').classList.remove('hidden');
         }
 
-        function closeAdminModal() {
+        window.closeAdminModal = function() {
             document.getElementById('adminModal').classList.add('hidden');
         }
 
-        function addNewWeekForm() {
+        window.addNewWeekForm = function() {
             const newId = `plan-${Date.now()}`;
             tempEditingPlans.push({
                 id: newId,
@@ -832,7 +874,7 @@
             renderWeeksBuilder();
         }
 
-        function removeWeekForm(index) {
+        window.removeWeekForm = function(index) {
             if (confirm("¿Seguro que deseas eliminar este servicio?")) {
                 tempEditingPlans.splice(index, 1);
                 renderWeeksBuilder();
@@ -847,7 +889,6 @@
                 const weekCard = document.createElement('div');
                 weekCard.className = "bg-[#101322] border border-cardBorder rounded-xl p-5 space-y-4 relative shadow-lg";
 
-                // Vocals Rows
                 const vocalsRows = plan.vocals.map((v, vIdx) => `
                     <div class="flex items-center gap-2 mb-2">
                         <input type="text" placeholder="Nombre del Vocalista" value="${v.singer}" onchange="updateVocalSinger(${wIdx}, ${vIdx}, this.value)" class="w-1/2 bg-[#090a10] border border-cardBorder text-xs rounded-lg p-2 text-white focus:border-purple-500 focus:outline-none">
@@ -856,7 +897,6 @@
                     </div>
                 `).join('');
 
-                // Coros Tags
                 const corosTags = plan.coros.map((c, cIdx) => `
                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-900/40 border border-purple-700/50 text-xs text-purple-200">
                         ${c}
@@ -864,7 +904,6 @@
                     </span>
                 `).join(' ');
 
-                // Band Rows
                 const bandRows = plan.band.map((b, bIdx) => {
                     const optionsHtml = INSTRUMENT_OPTIONS.map(opt => `
                         <option value="${opt.name}" ${opt.name === b.instrument ? 'selected' : ''}>${opt.icon} ${opt.name}</option>
@@ -885,14 +924,13 @@
                     <div class="flex items-center justify-between pb-3 border-b border-cardBorder">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full mr-4">
                             <input type="text" value="${plan.title}" onchange="tempEditingPlans[${wIdx}].title = this.value" placeholder="Fecha (Ej: JUEVES 5)" class="bg-[#090a10] border border-purple-500/30 text-sm font-bold text-white rounded-lg p-2 focus:outline-none">
-                            <input type="text" value="${plan.subtitle}" onchange="tempEditingPlans[${wIdx}].subtitle = this.value" placeholder="Tipo de Servicio (Ej: NOCHES DEL ESPÍRITU SANTO)" class="bg-[#090a10] border border-cardBorder text-xs text-purple-300 rounded-lg p-2 focus:outline-none">
+                            <input type="text" value="${plan.subtitle}" onchange="tempEditingPlans[${wIdx}].subtitle = this.value" placeholder="Tipo de Servicio" class="bg-[#090a10] border border-cardBorder text-xs text-purple-300 rounded-lg p-2 focus:outline-none">
                         </div>
                         <button onclick="removeWeekForm(${wIdx})" class="text-red-400 hover:text-red-300 p-2 text-sm" title="Eliminar semana completa">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </div>
 
-                    <!-- Vocals Section -->
                     <div>
                         <div class="flex items-center justify-between mb-1.5">
                             <label class="text-xs font-bold text-gray-400 uppercase">Vocales & Canciones</label>
@@ -901,7 +939,6 @@
                         ${vocalsRows}
                     </div>
 
-                    <!-- Coros Tag Input Section -->
                     <div>
                         <label class="block text-xs font-bold text-purple-400 uppercase mb-1.5">Coros (Presione ENTER para agregar)</label>
                         <div class="flex gap-2 mb-2">
@@ -913,7 +950,6 @@
                         </div>
                     </div>
 
-                    <!-- Band Instrument Selector Section -->
                     <div>
                         <div class="flex items-center justify-between mb-1.5">
                             <label class="text-xs font-bold text-cyan-400 uppercase">Banda / Instrumentos</label>
@@ -922,19 +958,18 @@
                         ${bandRows}
                     </div>
 
-                    <!-- Tech & Ofrendas -->
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-cardBorder/60">
                         <div>
                             <label class="block text-xs text-gray-400 mb-1">Talk Back</label>
-                            <input type="text" value="${plan.talkback}" onchange="tempEditingPlans[${wIdx}].talkback = this.value" placeholder="Nombre (Ej: Kim)" class="w-full bg-[#090a10] border border-cardBorder text-xs rounded-lg p-1.5 text-white">
+                            <input type="text" value="${plan.talkback}" onchange="tempEditingPlans[${wIdx}].talkback = this.value" placeholder="Nombre" class="w-full bg-[#090a10] border border-cardBorder text-xs rounded-lg p-1.5 text-white">
                         </div>
                         <div>
                             <label class="block text-xs text-gray-400 mb-1">Multitracks</label>
-                            <input type="text" value="${plan.multitracks}" onchange="tempEditingPlans[${wIdx}].multitracks = this.value" placeholder="Nombre (Ej: Fabio)" class="w-full bg-[#090a10] border border-cardBorder text-xs rounded-lg p-1.5 text-white">
+                            <input type="text" value="${plan.multitracks}" onchange="tempEditingPlans[${wIdx}].multitracks = this.value" placeholder="Nombre" class="w-full bg-[#090a10] border border-cardBorder text-xs rounded-lg p-1.5 text-white">
                         </div>
                         <div>
                             <label class="block text-xs text-amber-400 mb-1">Canción Ofrendas</label>
-                            <input type="text" value="${plan.ofrendas}" onchange="tempEditingPlans[${wIdx}].ofrendas = this.value" placeholder="Canción / Título" class="w-full bg-[#090a10] border border-cardBorder text-xs rounded-lg p-1.5 text-white">
+                            <input type="text" value="${plan.ofrendas}" onchange="tempEditingPlans[${wIdx}].ofrendas = this.value" placeholder="Título" class="w-full bg-[#090a10] border border-cardBorder text-xs rounded-lg p-1.5 text-white">
                         </div>
                     </div>
                 `;
@@ -943,33 +978,32 @@
             });
         }
 
-        // Helper functions for dynamic week builder
-        function addVocalRow(wIdx) {
+        window.addVocalRow = function(wIdx) {
             tempEditingPlans[wIdx].vocals.push({ singer: "", song: "" });
             renderWeeksBuilder();
         }
 
-        function removeVocalRow(wIdx, vIdx) {
+        window.removeVocalRow = function(wIdx, vIdx) {
             tempEditingPlans[wIdx].vocals.splice(vIdx, 1);
             renderWeeksBuilder();
         }
 
-        function updateVocalSinger(wIdx, vIdx, val) {
+        window.updateVocalSinger = function(wIdx, vIdx, val) {
             tempEditingPlans[wIdx].vocals[vIdx].singer = val;
         }
 
-        function updateVocalSong(wIdx, vIdx, val) {
+        window.updateVocalSong = function(wIdx, vIdx, val) {
             tempEditingPlans[wIdx].vocals[vIdx].song = val;
         }
 
-        function handleCoroKeyDown(e, wIdx) {
+        window.handleCoroKeyDown = function(e, wIdx) {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                addCoroFromInput(wIdx);
+                window.addCoroFromInput(wIdx);
             }
         }
 
-        function addCoroFromInput(wIdx) {
+        window.addCoroFromInput = function(wIdx) {
             const input = document.getElementById(`coroInput-${wIdx}`);
             if (input && input.value.trim()) {
                 tempEditingPlans[wIdx].coros.push(input.value.trim());
@@ -978,33 +1012,32 @@
             }
         }
 
-        function removeCoroTag(wIdx, cIdx) {
+        window.removeCoroTag = function(wIdx, cIdx) {
             tempEditingPlans[wIdx].coros.splice(cIdx, 1);
             renderWeeksBuilder();
         }
 
-        function addBandRow(wIdx) {
+        window.addBandRow = function(wIdx) {
             tempEditingPlans[wIdx].band.push({ instrument: "Electric Guitar", icon: "🎸", musician: "" });
             renderWeeksBuilder();
         }
 
-        function removeBandRow(wIdx, bIdx) {
+        window.removeBandRow = function(wIdx, bIdx) {
             tempEditingPlans[wIdx].band.splice(bIdx, 1);
             renderWeeksBuilder();
         }
 
-        function updateBandInstrument(wIdx, bIdx, val) {
+        window.updateBandInstrument = function(wIdx, bIdx, val) {
             const match = INSTRUMENT_OPTIONS.find(o => o.name === val);
             tempEditingPlans[wIdx].band[bIdx].instrument = val;
             tempEditingPlans[wIdx].band[bIdx].icon = match ? match.icon : "🎵";
         }
 
-        function updateBandMusician(wIdx, bIdx, val) {
+        window.updateBandMusician = function(wIdx, bIdx, val) {
             tempEditingPlans[wIdx].band[bIdx].musician = val;
         }
 
-        // Save & Backup Handlers
-        function saveAllAdminPlans() {
+        window.saveAllAdminPlans = function() {
             const newMonthData = {
                 monthTitle: document.getElementById('monthInput').value || "Noviembre 2026",
                 cdmTitle: document.getElementById('cdmTitleInput').value || "UN ENCUENTRO CONTIGO",
@@ -1013,61 +1046,27 @@
             };
 
             saveWorshipData(newMonthData);
-            populateMemberDropdown();
-            renderMainView();
-            closeAdminModal();
+            window.populateMemberDropdown();
+            window.renderMainView();
+            window.closeAdminModal();
         }
 
-        function resetDefaultPlans() {
+        window.resetDefaultPlans = function() {
             if (confirm("¿Deseas restablecer el plan a la versión inicial de Noviembre 2026?")) {
                 saveWorshipData(JSON.parse(JSON.stringify(initialData)));
-                populateMemberDropdown();
-                renderMainView();
-                closeAdminModal();
+                window.populateMemberDropdown();
+                window.renderMainView();
+                window.closeAdminModal();
             }
         }
 
-        function exportJSONBackup() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(currentWorshipData, null, 2));
+        window.exportJSONBackup = function() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(window.currentWorshipData, null, 2));
             const dlAnchorElem = document.createElement('a');
             dlAnchorElem.setAttribute("href", dataStr);
             dlAnchorElem.setAttribute("download", `MANA_Worship_Plan_${Date.now()}.json`);
             dlAnchorElem.click();
         }
-
-        // Abrir modal de contraseña con puntos de privacidad
-        function openAuthModal() {
-            document.getElementById('adminPasswordInput').value = '';
-            document.getElementById('authModal').classList.remove('hidden');
-            setTimeout(() => {
-                document.getElementById('adminPasswordInput').focus();
-            }, 50);
-        }
-
-        function closeAuthModal() {
-            document.getElementById('authModal').classList.add('hidden');
-        }
-
-        function submitAuth() {
-            const pass = document.getElementById('adminPasswordInput').value;
-            if (pass === ADMIN_PASS) {
-                closeAuthModal();
-                openAdminModal(); // Abre el panel de administración
-            } else {
-                alert('Clave incorrecta');
-            }
-        }
-
-        // Opcional: Permitir presionar "ENTER" en el input de contraseña
-        document.getElementById('adminPasswordInput')?.addEventListener('keyup', (e) => {
-        if (e.key === 'Enter') submitAuth();
-        });
-
-        // Application initialization
-        window.onload = function() {
-            populateMemberDropdown();
-            renderMainView();
-        };
     </script>
 </body>
 </html>
