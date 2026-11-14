@@ -36,7 +36,7 @@
         window.fbSet = set;
         window.fbOnValue = onValue;
 
-        const dataRef = ref(db, 'mana_worship_plan_v7');
+        const dataRef = ref(db, 'mana_worship_plan_v9');
         onValue(dataRef, (snapshot) => {
             const serverData = snapshot.val();
             if (serverData) {
@@ -208,16 +208,21 @@
     <header class="no-print border-b border-white/5 bg-[#0e1118]/90 sticky top-0 z-40 backdrop-blur-xl">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <!-- Brand Title -->
-                <div class="flex items-center gap-3.5">
-                    <div class="w-12 h-12 rounded-2xl glow-coral-pill flex items-center justify-center text-white font-extrabold text-xl shadow-lg">
-                        AA
+                <!-- Brand Title with Larger Logo & Perfectly Aligned Heights -->
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 rounded-2xl overflow-hidden glow-coral-pill flex items-center justify-center shadow-lg bg-black flex-shrink-0">
+                        <img src="mana_worship_logo.jpg" alt="MANÁ Worship Logo" class="w-full h-full object-cover">
                     </div>
-                    <div>
-                        <h1 class="text-2xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-rose-300">
-                            MANÁ <span class="text-xs font-bold px-2.5 py-1 rounded-xl glow-coral-pill text-rose-200 uppercase tracking-widest ml-1">Worship</span>
-                        </h1>
-                        <p class="text-xs text-gray-400 font-medium mt-0.5" id="monthSubHeader">Planificador de Servicios • Noviembre 2026</p>
+                    <div class="flex flex-col justify-center">
+                        <div class="flex items-center gap-2.5 flex-wrap">
+                            <h1 class="text-3xl font-extrabold tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-rose-300 leading-none">
+                                MANÁ
+                            </h1>
+                            <span class="text-xs font-bold px-3 py-1.5 rounded-xl glow-coral-pill text-rose-200 uppercase tracking-widest leading-none">
+                                WORSHIP
+                            </span>
+                        </div>
+                        <p class="text-sm text-gray-300 font-semibold mt-1.5" id="monthSubHeader">Planificador de Servicios • Noviembre 2026</p>
                     </div>
                 </div>
 
@@ -627,7 +632,7 @@
         function saveWorshipData(data) {
             window.currentWorshipData = data;
             if (window.fbDb && window.fbRef && window.fbSet) {
-                const dataRef = window.fbRef(window.fbDb, 'mana_worship_plan_v7');
+                const dataRef = window.fbRef(window.fbDb, 'mana_worship_plan_v9');
                 window.fbSet(dataRef, data).catch((error) => {
                     console.error("Error al guardar en Firebase:", error);
                 });
@@ -647,7 +652,6 @@
             return videoId || "FWbT3w7agHc";
         }
 
-        // Función que se ejecuta al hacer clic en Play: reemplaza la miniatura por el reproductor iframe en vivo
         window.playVideoInPage = function() {
             const data = window.currentWorshipData || initialData;
             const ytUrl = data.cdmYoutubeUrl || "https://www.youtube.com/watch?v=FWbT3w7agHc";
@@ -724,14 +728,12 @@
             const ytUrl = data.cdmYoutubeUrl || "https://www.youtube.com/watch?v=FWbT3w7agHc";
             const videoId = extractYouTubeId(ytUrl);
             
-            // Actualizar miniatura y enlace externo
             const thumbnailImg = document.getElementById('youtubeThumbnail');
             const ytLinkBtn = document.getElementById('youtubeExternalLink');
             
             if (thumbnailImg) thumbnailImg.src = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
             if (ytLinkBtn) ytLinkBtn.href = ytUrl;
 
-            // Restablecer la vista previa al cambiar de datos o guardar
             const overlay = document.getElementById('videoThumbnailOverlay');
             const iframeContainer = document.getElementById('youtubeIframeContainer');
             if (overlay) overlay.classList.remove('hidden');
