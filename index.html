@@ -273,6 +273,19 @@
                 </div>
             </div>
         </div>
+
+        <!-- Active Filter Indicator Banner (Ahora ubicado PRIMERO, antes de la Canción del Mes) -->
+        <div id="filterBanner" class="hidden mb-10 p-5 rounded-3xl glow-coral-pill flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 backdrop-blur-md">
+            <div class="flex items-start gap-3.5">
+                <i class="fa-solid fa-user-tag text-coralLight text-xl mt-1"></i>
+                <div>
+                    <p class="text-sm text-gray-200 font-medium">Mostrando participaciones de: <strong id="filterMemberName" class="text-white text-base font-bold"></strong></p>
+                    <p class="text-xs text-rose-200 font-medium mt-1 leading-relaxed" id="filterDetailedSchedule"></p>
+                    <p class="text-xs text-gray-300 font-normal mt-0.5" id="filterStats"></p>
+                </div>
+            </div>
+            <button onclick="clearFilter()" class="text-xs text-rose-200 hover:text-white underline font-semibold transition whitespace-nowrap self-start sm:self-center">Ver todos los servicios</button>
+        </div>
                 
         <!-- Banner Summary / Canción del Mes (CDM) con Reproductor Embebido Dinámico -->
         <div class="mb-10 p-6 sm:p-8 rounded-3xl glass-card relative overflow-hidden border border-white/10">
@@ -325,19 +338,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Active Filter Indicator Banner -->
-        <div id="filterBanner" class="hidden mb-8 p-5 rounded-3xl glow-coral-pill flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 backdrop-blur-md">
-            <div class="flex items-start gap-3.5">
-                <i class="fa-solid fa-user-tag text-coralLight text-xl mt-1"></i>
-                <div>
-                    <p class="text-sm text-gray-200 font-medium">Mostrando participaciones de: <strong id="filterMemberName" class="text-white text-base font-bold"></strong></p>
-                    <p class="text-xs text-rose-200 font-medium mt-1 leading-relaxed" id="filterDetailedSchedule"></p>
-                    <p class="text-xs text-gray-300 font-normal mt-0.5" id="filterStats"></p>
-                </div>
-            </div>
-            <button onclick="clearFilter()" class="text-xs text-rose-200 hover:text-white underline font-semibold transition whitespace-nowrap self-start sm:self-center">Ver todos los servicios</button>
         </div>
 
         <!-- CARDS GRID -->
@@ -749,7 +749,7 @@
 
             let matchedCardsCount = 0;
             let totalRolesForFilter = 0;
-            let memberAssignments = []; // Para almacenar las fechas y roles del integrante filtrado
+            let memberAssignments = [];
 
             data.plans.forEach((plan) => {
                 const isFiltering = currentFilterMember !== "";
@@ -757,7 +757,6 @@
                 let planRolesDesc = [];
 
                 if (isFiltering) {
-                    // Revisar Vocales
                     plan.vocals.forEach(v => {
                         if (isMemberInText(v.singer, currentFilterMember)) {
                             hasMemberInPlan = true;
@@ -765,7 +764,6 @@
                         }
                     });
 
-                    // Revisar Coros
                     plan.coros.forEach(c => {
                         if (isMemberInText(c, currentFilterMember)) {
                             hasMemberInPlan = true;
@@ -773,7 +771,6 @@
                         }
                     });
 
-                    // Revisar Banda
                     if (Array.isArray(plan.band)) {
                         plan.band.forEach(b => {
                             if (isMemberInText(b.musician, currentFilterMember)) {
@@ -783,7 +780,6 @@
                         });
                     }
 
-                    // Revisar Talkback / Multitracks
                     if (isMemberInText(plan.talkback, currentFilterMember)) {
                         hasMemberInPlan = true;
                         planRolesDesc.push("Talk Back");
@@ -938,7 +934,6 @@
                 filterBanner.classList.remove('hidden');
                 document.getElementById('filterMemberName').textContent = currentFilterMember;
                 
-                // Formatear el texto detallado de fechas y roles
                 let scheduleText = "";
                 if (memberAssignments.length > 0) {
                     scheduleText = `🗓️ <strong>${currentFilterMember}</strong> está asignado(a): ${memberAssignments.join(', ')}.`;
