@@ -36,7 +36,7 @@
         window.fbSet = set;
         window.fbOnValue = onValue;
 
-        const dataRef = ref(db, 'mana_worship_plan_v9');
+        const dataRef = ref(db, 'mana_worship_plan_v10');
         onValue(dataRef, (snapshot) => {
             const serverData = snapshot.val();
             if (serverData) {
@@ -205,7 +205,7 @@
 <body class="min-h-screen pb-20">
 
     <!-- TOP NAVIGATION HEADER -->
-    <header class="no-print border-b border-white/5 bg-[#0e1118]/90 sticky top-0 z-40 backdrop-blur-xl">
+    <header class="no-print border-b border-white/5 bg-[#0e1118]/50 sticky top-0 z-40 backdrop-blur-xl">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
             <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <!-- Brand Title with Larger Logo & Perfectly Aligned Heights -->
@@ -328,15 +328,16 @@
         </div>
 
         <!-- Active Filter Indicator Banner -->
-        <div id="filterBanner" class="hidden mb-8 p-5 rounded-3xl glow-coral-pill flex items-center justify-between backdrop-blur-md">
-            <div class="flex items-center gap-3.5">
-                <i class="fa-solid fa-user-tag text-coralLight text-xl"></i>
+        <div id="filterBanner" class="hidden mb-8 p-5 rounded-3xl glow-coral-pill flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 backdrop-blur-md">
+            <div class="flex items-start gap-3.5">
+                <i class="fa-solid fa-user-tag text-coralLight text-xl mt-1"></i>
                 <div>
                     <p class="text-sm text-gray-200 font-medium">Mostrando participaciones de: <strong id="filterMemberName" class="text-white text-base font-bold"></strong></p>
-                    <p class="text-xs text-rose-200 font-normal mt-0.5" id="filterStats"></p>
+                    <p class="text-xs text-rose-200 font-medium mt-1 leading-relaxed" id="filterDetailedSchedule"></p>
+                    <p class="text-xs text-gray-300 font-normal mt-0.5" id="filterStats"></p>
                 </div>
             </div>
-            <button onclick="clearFilter()" class="text-xs text-rose-200 hover:text-white underline font-semibold transition">Ver todos los servicios</button>
+            <button onclick="clearFilter()" class="text-xs text-rose-200 hover:text-white underline font-semibold transition whitespace-nowrap self-start sm:self-center">Ver todos los servicios</button>
         </div>
 
         <!-- CARDS GRID -->
@@ -632,7 +633,7 @@
         function saveWorshipData(data) {
             window.currentWorshipData = data;
             if (window.fbDb && window.fbRef && window.fbSet) {
-                const dataRef = window.fbRef(window.fbDb, 'mana_worship_plan_v9');
+                const dataRef = window.fbRef(window.fbDb, 'mana_worship_plan_v10');
                 window.fbSet(dataRef, data).catch((error) => {
                     console.error("Error al guardar en Firebase:", error);
                 });
@@ -748,19 +749,54 @@
 
             let matchedCardsCount = 0;
             let totalRolesForFilter = 0;
+            let memberAssignments = []; // Para almacenar las fechas y roles del integrante filtrado
 
             data.plans.forEach((plan) => {
                 const isFiltering = currentFilterMember !== "";
                 let hasMemberInPlan = false;
+                let planRolesDesc = [];
 
                 if (isFiltering) {
-                    const inVocals = plan.vocals.some(v => isMemberInText(v.singer, currentFilterMember));
-                    const inCoros = plan.coros.some(c => isMemberInText(c, currentFilterMember));
-                    const inBand = Array.isArray(plan.band) && plan.band.some(b => isMemberInText(b.musician, currentFilterMember));
-                    const inTech = isMemberInText(plan.talkback, currentFilterMember) || isMemberInText(plan.multitracks, currentFilterMember);
+                    // Revisar Vocales
+                    plan.vocals.forEach(v => {
+                        if (isMemberInText(v.singer, currentFilterMember)) {
+                            hasMemberInPlan = true;
+                            planRolesDesc.push("Vocal");
+                        }
+                    });
 
-                    hasMemberInPlan = inVocals || inCoros || inBand || inTech;
-                    if (hasMemberInPlan) matchedCardsCount++;
+                    // Revisar Coros
+                    plan.coros.forEach(c => {
+                        if (isMemberInText(c, currentFilterMember)) {
+                            hasMemberInPlan = true;
+                            planRolesDesc.push("Coros");
+                        }
+                    });
+
+                    // Revisar Banda
+                    if (Array.isArray(plan.band)) {
+                        plan.band.forEach(b => {
+                            if (isMemberInText(b.musician, currentFilterMember)) {
+                                hasMemberInPlan = true;
+                                planRolesDesc.push(b.instrument);
+                            }
+                        });
+                    }
+
+                    // Revisar Talkback / Multitracks
+                    if (isMemberInText(plan.talkback, currentFilterMember)) {
+                        hasMemberInPlan = true;
+                        planRolesDesc.push("Talk Back");
+                    }
+                    if (isMemberInText(plan.multitracks, currentFilterMember)) {
+                        hasMemberInPlan = true;
+                        planRolesDesc.push("Multitracks");
+                    }
+
+                    if (hasMemberInPlan) {
+                        matchedCardsCount++;
+                        memberAssignments.push(`${plan.title} (${planRolesDesc.join(', ')})`);
+                    }
                 }
 
                 const isCelebraciones = normalizeStr(plan.subtitle).includes("celebraciones");
@@ -901,7 +937,17 @@
             if (currentFilterMember !== "") {
                 filterBanner.classList.remove('hidden');
                 document.getElementById('filterMemberName').textContent = currentFilterMember;
-                document.getElementById('filterStats').textContent = `Participa en ${matchedCardsCount} de ${data.plans.length} servicios con ${totalRolesForFilter} asignación(es).`;
+                
+                // Formatear el texto detallado de fechas y roles
+                let scheduleText = "";
+                if (memberAssignments.length > 0) {
+                    scheduleText = `🗓️ <strong>${currentFilterMember}</strong> está asignado(a): ${memberAssignments.join(', ')}.`;
+                } else {
+                    scheduleText = `🗓️ ${currentFilterMember} no tiene asignaciones registradas este mes.`;
+                }
+                
+                document.getElementById('filterDetailedSchedule').innerHTML = scheduleText;
+                document.getElementById('filterStats').textContent = `Participa en ${matchedCardsCount} de ${data.plans.length} servicios con ${totalRolesForFilter} asignación(es) total(es).`;
             } else {
                 filterBanner.classList.add('hidden');
             }
@@ -1101,7 +1147,6 @@
             tempEditingPlans[wIdx].vocals[vIdx].song = val;
         }
 
-        
         window.handleCoroKeyDown = function(e, wIdx) {
             if (e.key === 'Enter') {
                 e.preventDefault();
