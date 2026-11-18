@@ -274,7 +274,7 @@
             </div>
         </div>
 
-        <!-- Active Filter Indicator Banner (Ahora ubicado PRIMERO, antes de la Canción del Mes) -->
+        <!-- Active Filter Indicator Banner -->
         <div id="filterBanner" class="hidden mb-10 p-5 rounded-3xl glow-coral-pill flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 backdrop-blur-md">
             <div class="flex items-start gap-3.5">
                 <i class="fa-solid fa-user-tag text-coralLight text-xl mt-1"></i>
@@ -288,7 +288,7 @@
         </div>
                 
         <!-- Banner Summary / Canción del Mes (CDM) con Reproductor Embebido Dinámico -->
-        <div class="mb-10 p-6 sm:p-8 rounded-3xl glass-card relative overflow-hidden border border-white/10">
+        <div class="mb-6 p-6 sm:p-8 rounded-3xl glass-card relative overflow-hidden border border-white/10">
             <div class="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 bg-coralGlow/15 rounded-full blur-3xl pointer-events-none"></div>
             
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
@@ -340,6 +340,22 @@
             </div>
         </div>
 
+        <!-- HELPER LNKS -->
+       <div class="mb-10 p-5 sm:px-8 rounded-3xl glass-card border border-white/10 flex flex-col gap-3 text-sm sm:text-base">
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-bold text-gray-200">Link de Multitracks Ensayo:</span>
+                <a id="multitracksLinkDisplay" href="#" target="_blank" rel="noopener noreferrer" class="text-coralLight hover:text-white underline break-all transition">
+                    https://mega.nz/folder/I2QDiY7J#0IOJmRwInKA3G4r3Mk7HYA
+                </a>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-bold text-gray-200">Link Drive Letras:</span>
+                <a id="letrasLinkDisplay" href="#" target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-white underline break-all transition">
+                    https://drive.google.com/drive/folders/1QyQOEzWmVDxZlGJpVvHvF6n-b1CYjxYx
+                </a>
+            </div>
+        </div>
+
         <!-- CARDS GRID -->
         <div id="plansGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-8">
             <!-- Dynamic Cards render here -->
@@ -358,7 +374,7 @@
                     </div>
                     <div>
                         <h3 class="text-xl font-bold text-white">Panel Administrador — Diseñador de Plan Mensual</h3>
-                        <p class="text-xs text-gray-400">Configura la Canción del Mes, Video de YouTube y los servicios</p>
+                        <p class="text-xs text-gray-400">Configura la Canción del Mes, enlaces de recursos y los servicios</p>
                     </div>
                 </div>
                 <button onclick="closeAdminModal()" class="text-gray-400 hover:text-white text-2xl px-2 transition">
@@ -368,7 +384,7 @@
 
             <!-- Modal Scrollable Content -->
             <div class="p-8 overflow-y-auto space-y-6">
-                <!-- General Month & CDM Settings -->
+                <!-- General Month, CDM & Resource Links Settings -->
                 <div class="bg-[#0e1118] p-5 rounded-3xl border border-white/10 grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                         <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Mes / Período del Plan</label>
@@ -385,6 +401,14 @@
                     <div>
                         <label class="block text-xs font-semibold text-coralLight uppercase tracking-wider mb-2">URL de YouTube (CDM)</label>
                         <input type="text" id="cdmYoutubeInput" value="https://www.youtube.com/watch?v=FWbT3w7agHc" placeholder="https://www.youtube.com/watch?v=..." class="w-full bg-[#151922] border border-white/10 text-sm rounded-2xl p-3.5 text-white focus:border-coralGlow focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-coralLight uppercase tracking-wider mb-2">URL Multitracks Ensayo</label>
+                        <input type="text" id="multitracksUrlInput" value="https://mega.nz/" placeholder="https://mega.nz/..." class="w-full bg-[#151922] border border-white/10 text-sm rounded-2xl p-3.5 text-white focus:border-coralGlow focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-cyan-300 uppercase tracking-wider mb-2">URL Letras (Google Drive PDF)</label>
+                        <input type="text" id="letrasUrlInput" value="https://drive.google.com/" placeholder="https://drive.google.com/..." class="w-full bg-[#151922] border border-white/10 text-sm rounded-2xl p-3.5 text-white focus:border-coralGlow focus:outline-none">
                     </div>
                 </div>
 
@@ -435,6 +459,8 @@
             cdmTitle: "UN ENCUENTRO CONTIGO",
             cdmArtist: "Oasis Ministry",
             cdmYoutubeUrl: "https://www.youtube.com/watch?v=FWbT3w7agHc",
+            multitracksUrl: "https://mega.nz/",
+            letrasUrl: "https://drive.google.com/",
             plans: [
                 {
                     id: "plan-1",
@@ -726,6 +752,22 @@
             document.getElementById('cdmDisplayTitle').textContent = data.cdmTitle;
             document.getElementById('cdmDisplayArtist').textContent = data.cdmArtist;
 
+            // Actualizar enlaces de Multitracks y Letras
+            const mtUrl = data.multitracksUrl || "https://mega.nz/";
+            const ltUrl = data.letrasUrl || "https://drive.google.com/";
+            
+            const mtLinkEl = document.getElementById('multitracksLinkDisplay');
+            const ltLinkEl = document.getElementById('letrasLinkDisplay');
+            
+            if (mtLinkEl) {
+                mtLinkEl.href = mtUrl;
+                mtLinkEl.textContent = mtUrl;
+            }
+            if (ltLinkEl) {
+                ltLinkEl.href = ltUrl;
+                ltLinkEl.textContent = ltUrl;
+            }
+
             const ytUrl = data.cdmYoutubeUrl || "https://www.youtube.com/watch?v=FWbT3w7agHc";
             const videoId = extractYouTubeId(ytUrl);
             
@@ -991,6 +1033,8 @@
             document.getElementById('cdmTitleInput').value = window.currentWorshipData.cdmTitle;
             document.getElementById('cdmArtistInput').value = window.currentWorshipData.cdmArtist;
             document.getElementById('cdmYoutubeInput').value = window.currentWorshipData.cdmYoutubeUrl || "https://www.youtube.com/watch?v=FWbT3w7agHc";
+            document.getElementById('multitracksUrlInput').value = window.currentWorshipData.multitracksUrl || "https://mega.nz/";
+            document.getElementById('letrasUrlInput').value = window.currentWorshipData.letrasUrl || "https://drive.google.com/";
 
             renderWeeksBuilder();
             document.getElementById('adminModal').classList.remove('hidden');
@@ -1189,6 +1233,8 @@
                 cdmTitle: document.getElementById('cdmTitleInput').value || "UN ENCUENTRO CONTIGO",
                 cdmArtist: document.getElementById('cdmArtistInput').value || "Oasis Ministry",
                 cdmYoutubeUrl: document.getElementById('cdmYoutubeInput').value || "https://www.youtube.com/watch?v=FWbT3w7agHc",
+                multitracksUrl: document.getElementById('multitracksUrlInput').value || "https://mega.nz/",
+                letrasUrl: document.getElementById('letrasUrlInput').value || "https://drive.google.com/",
                 plans: tempEditingPlans
             };
 
