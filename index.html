@@ -228,14 +228,20 @@
 
                 <!-- Controls & Filters -->
                 <div class="flex flex-wrap items-center gap-3">
-                    <!-- Member Selector Filter -->
-                    <div class="relative flex-1 sm:flex-initial min-w-[200px]">
-                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-coralLight">
-                            <i class="fa-solid fa-user-check text-sm"></i>
+                    <!-- Member Selector Filter (Custom Dropdown unificado mobile y desktop) -->
+                    <div class="relative flex-1 sm:flex-initial min-w-[220px]">
+                        <button type="button" onclick="toggleCustomDropdown()" id="customDropdownBtn" class="w-full flex items-center justify-between pl-3.5 pr-4 py-2.5 bg-[#151922] border border-white/10 text-sm rounded-2xl text-gray-200 hover:bg-[#1c222e] transition shadow-inner cursor-pointer">
+                            <span class="flex items-center gap-2.5 truncate">
+                                <i class="fa-solid fa-user-check text-coralLight text-sm"></i>
+                                <span id="customDropdownLabel" class="truncate font-medium">🔍 Ver Mi Agenda...</span>
+                            </span>
+                            <i class="fa-solid fa-chevron-down text-xs text-gray-400 transition-transform duration-200" id="dropdownChevron"></i>
+                        </button>
+
+                        <!-- Dropdown Menu List -->
+                        <div id="customDropdownList" class="absolute left-0 right-0 mt-2 bg-[#151922] border border-white/15 rounded-2xl shadow-2xl max-h-72 overflow-y-auto hidden z-50 p-2 space-y-1 backdrop-blur-2xl">
+                            <!-- Items generados dinámicamente -->
                         </div>
-                        <select id="memberFilter" onchange="filterByMember()" class="w-full pl-10 pr-10 py-2.5 bg-[#151922] border border-white/10 text-sm rounded-2xl focus:ring-2 focus:ring-coralGlow focus:border-transparent text-gray-200 cursor-pointer hover:bg-[#1c222e] transition shadow-inner">
-                            <option value="">🔍 Ver Mi Agenda...</option>
-                        </select>
                     </div>
 
                     <!-- Clear Filter Button -->
@@ -731,19 +737,75 @@
             return Array.from(membersSet).sort();
         }
 
+        // Funciones del menú desplegable personalizado para mantener el look & feel en móvil y PC
+        window.toggleCustomDropdown = function() {
+            const list = document.getElementById('customDropdownList');
+            const chevron = document.getElementById('dropdownChevron');
+            if (list) {
+                list.classList.toggle('hidden');
+                if (chevron) {
+                    chevron.classList.toggle('rotate-180');
+                }
+            }
+        }
+
+        window.addEventListener('click', function(e) {
+            const dropdownBtn = document.getElementById('customDropdownBtn');
+            const dropdownList = document.getElementById('customDropdownList');
+            if (dropdownBtn && dropdownList && !dropdownBtn.contains(e.target) && !dropdownList.contains(e.target)) {
+                dropdownList.classList.add('hidden');
+                const chevron = document.getElementById('dropdownChevron');
+                if (chevron) chevron.classList.remove('rotate-180');
+            }
+        });
+
         window.populateMemberDropdown = function() {
-            const select = document.getElementById('memberFilter');
-            if (!select) return;
+            const listContainer = document.getElementById('customDropdownList');
+            if (!listContainer) return;
             const members = getAllUniqueMembers();
-            select.innerHTML = '<option value="">🔍 Ver Mi Agenda...</option>';
+            
+            let html = `<div onclick="selectMember('')" class="px-3.5 py-2.5 rounded-xl hover:bg-white/10 cursor-pointer text-gray-300 text-sm font-medium transition flex items-center gap-2">🔍 Ver Mi Agenda...</div>`;
+            
             members.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m;
-                opt.textContent = m;
-                select.appendChild(opt);
+                const isSelected = currentFilterMember === m;
+                html += `<div onclick="selectMember('${m}')" class="px-3.5 py-2.5 rounded-xl hover:bg-coralGlow/20 cursor-pointer text-sm font-medium transition flex items-center justify-between ${isSelected ? 'bg-coralGlow/25 text-white font-bold' : 'text-gray-200'}">
+                    <span>${m}</span>
+                    ${isSelected ? '<i class="fa-solid fa-check text-coralLight text-xs"></i>' : ''}
+                </div>`;
             });
+            
+            listContainer.innerHTML = html;
+            
+            const labelEl = document.getElementById('customDropdownLabel');
+            if (labelEl) {
+                labelEl.textContent = currentFilterMember ? `👤 ${currentFilterMember}` : "🔍 Ver Mi Agenda...";
+            }
             const totalMembersEl = document.getElementById('totalMembersCount');
             if (totalMembersEl) totalMembersEl.textContent = `${members.length} Persona(s)`;
+        }
+
+        window.selectMember = function(memberName) {
+            currentFilterMember = memberName;
+            const labelEl = document.getElementById('customDropdownLabel');
+            if (labelEl) {
+                labelEl.textContent = currentFilterMember ? `👤 ${currentFilterMember}` : "🔍 Ver Mi Agenda...";
+            }
+            
+            const list = document.getElementById('customDropdownList');
+            if (list) list.classList.add('hidden');
+            const chevron = document.getElementById('dropdownChevron');
+            if (chevron) chevron.classList.remove('rotate-180');
+
+            const clearBtn = document.getElementById('clearBtn');
+            if (currentFilterMember) clearBtn.classList.remove('hidden');
+            else clearBtn.classList.add('hidden');
+
+            window.populateMemberDropdown();
+            window.renderMainView();
+        }
+
+        window.clearFilter = function() {
+            window.selectMember("");
         }
 
         window.renderMainView = function() {
@@ -988,21 +1050,6 @@
             } else {
                 filterBanner.classList.add('hidden');
             }
-        }
-
-        window.filterByMember = function() {
-            currentFilterMember = document.getElementById('memberFilter').value;
-            const clearBtn = document.getElementById('clearBtn');
-            if (currentFilterMember) clearBtn.classList.remove('hidden');
-            else clearBtn.classList.add('hidden');
-            window.renderMainView();
-        }
-
-        window.clearFilter = function() {
-            document.getElementById('memberFilter').value = "";
-            currentFilterMember = "";
-            document.getElementById('clearBtn').classList.add('hidden');
-            window.renderMainView();
         }
 
         window.openAuthModal = function() {
