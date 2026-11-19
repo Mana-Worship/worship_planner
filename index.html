@@ -51,6 +51,9 @@
         });
     </script>
 
+    <!-- YouTube IFrame API Script -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+
     <script>
         tailwind.config = {
             theme: {
@@ -298,11 +301,11 @@
             <div class="absolute top-0 right-0 -mt-8 -mr-8 w-48 h-48 bg-coralGlow/15 rounded-full blur-3xl pointer-events-none"></div>
             
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
-                <!-- Columna Izquierda: Reproductor In-Page (Miniatura que al hacer click se convierte en Reproductor) -->
+                <!-- Columna Izquierda: Reproductor In-Page con YouTube API -->
                 <div class="lg:col-span-6 w-full">
                     <div id="videoContainerWrapper" class="w-full aspect-video rounded-2xl overflow-hidden border border-white/20 shadow-2xl bg-black relative">
                         <!-- Vista Previa de la Miniatura con Botón Play -->
-                        <div id="videoThumbnailOverlay" onclick="playVideoInPage()" class="absolute inset-0 cursor-pointer group flex items-center justify-center">
+                        <div id="videoThumbnailOverlay" onclick="playVideoInPage()" class="absolute inset-0 cursor-pointer group flex items-center justify-center z-20">
                             <img id="youtubeThumbnail" src="" alt="Canción del Mes" class="w-full h-full object-cover group-hover:scale-105 transition duration-500 opacity-90">
                             <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-center justify-center">
                                 <div class="w-16 h-16 rounded-full bg-red-600 group-hover:bg-red-500 text-white flex items-center justify-center shadow-2xl transition transform group-hover:scale-110">
@@ -314,8 +317,8 @@
                                 <i class="fa-solid fa-circle-play text-red-400 text-sm"></i>
                             </div>
                         </div>
-                        <!-- Iframe incrustado que aparecerá al dar click -->
-                        <div id="youtubeIframeContainer" class="w-full h-full hidden"></div>
+                        <!-- Contenedor donde se montará el reproductor oficial de YouTube -->
+                        <div id="youtubePlayerElement" class="w-full h-full"></div>
                     </div>
                 </div>
 
@@ -649,6 +652,7 @@
         window.currentWorshipData = JSON.parse(JSON.stringify(initialData));
         let currentFilterMember = "";
         let tempEditingPlans = [];
+        let ytPlayer = null;
 
         const INSTRUMENT_OPTIONS = [
             { name: "Drums", icon: "🥁" },
@@ -691,14 +695,27 @@
             const videoId = extractYouTubeId(ytUrl);
 
             const overlay = document.getElementById('videoThumbnailOverlay');
-            const iframeContainer = document.getElementById('youtubeIframeContainer');
-
             if (overlay) overlay.classList.add('hidden');
-            if (iframeContainer) {
-                iframeContainer.classList.remove('hidden');
-                iframeContainer.innerHTML = `
-                    <iframe class="w-full h-full border-0" src="https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1" title="Reproductor YouTube" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                `;
+
+            if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
+                ytPlayer.loadVideoById(videoId);
+                ytPlayer.playVideo();
+            } else if (window.YT && window.YT.Player) {
+                ytPlayer = new YT.Player('youtubePlayerElement', {
+                    height: '100%',
+                    width: '100%',
+                    videoId: videoId,
+                    playerVars: {
+                        'autoplay': 1,
+                        'modestbranding': 1,
+                        'rel': 0
+                    },
+                    events: {
+                        'onReady': (event) => {
+                            event.target.playVideo();
+                        }
+                    }
+                });
             }
         }
 
@@ -840,11 +857,10 @@
             if (ytLinkBtn) ytLinkBtn.href = ytUrl;
 
             const overlay = document.getElementById('videoThumbnailOverlay');
-            const iframeContainer = document.getElementById('youtubeIframeContainer');
             if (overlay) overlay.classList.remove('hidden');
-            if (iframeContainer) {
-                iframeContainer.classList.add('hidden');
-                iframeContainer.innerHTML = '';
+            
+            if (ytPlayer && typeof ytPlayer.stopVideo === 'function') {
+                ytPlayer.stopVideo();
             }
 
             const container = document.getElementById('plansGrid');
